@@ -64,7 +64,7 @@ The generated image applies these defaults on first boot:
 - Gateway: `192.168.3.254`
 - DNS: `192.168.3.254`, `223.5.5.5`
 - SSH port: `9167`
-- root password: `sony66..`
+- root password: `123456`
 
 ## Build
 
