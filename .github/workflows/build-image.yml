@@ -14,7 +14,7 @@ on:
       extra_packages:
         description: Extra packages to install into the base image
         required: true
-        default: "luci kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag vmlinux-btf v2ray-geoip v2ray-geosite"
+        default: "luci kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano"
       imagebuilder_url:
         description: ImmortalWrt ImageBuilder URL
         required: true

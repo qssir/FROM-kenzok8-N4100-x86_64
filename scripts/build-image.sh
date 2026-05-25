@@ -10,7 +10,7 @@ OUT_DIR="${OUT_DIR:-$PWD/out}"
 PREFLIGHT="${PREFLIGHT:-1}"
 ROOTFS_PARTSIZE="${ROOTFS_PARTSIZE:-1024}"
 
-EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag}"
+EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano}"
 
 WORK_DIR="${WORK_DIR:-$PWD/work}"
 IB_ARCHIVE="$WORK_DIR/imagebuilder.tar.zst"
