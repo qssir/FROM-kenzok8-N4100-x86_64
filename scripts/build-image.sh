@@ -10,9 +10,10 @@ OUT_DIR="${OUT_DIR:-$PWD/out}"
 PREFLIGHT="${PREFLIGHT:-1}"
 ROOTFS_PARTSIZE="${ROOTFS_PARTSIZE:-1024}"
 INSTALL_DAEDE="${INSTALL_DAEDE:-1}"
-DAEDE_REPO="${DAEDE_REPO:-kenzok8/luci-app-daede}"
+DAEDE_REPO="${DAEDE_REPO:-kenzok8/openwrt-daede}"
 DAEDE_RELEASE_TAG="${DAEDE_RELEASE_TAG:-latest}"
 DAEDE_ARCH="${DAEDE_ARCH:-x86_64}"
+DAEDE_PACKAGES="${DAEDE_PACKAGES:-dae daed luci-app-daede}"
 DAEDE_APK_URL="${DAEDE_APK_URL:-}"
 
 EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci luci-i18n-base-zh-cn luci-i18n-package-manager-zh-cn luci-app-daede kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano}"
@@ -22,12 +23,7 @@ IB_ARCHIVE="$WORK_DIR/imagebuilder.tar.zst"
 
 mkdir -p "$WORK_DIR" "$OUT_DIR"
 
-resolve_daede_apk_url() {
-  if [ -n "$DAEDE_APK_URL" ]; then
-    printf '%s\n' "$DAEDE_APK_URL"
-    return
-  fi
-
+resolve_daede_asset_urls() {
   local release_api
   if [ "$DAEDE_RELEASE_TAG" = "latest" ]; then
     release_api="https://api.github.com/repos/$DAEDE_REPO/releases/latest"
@@ -35,13 +31,14 @@ resolve_daede_apk_url() {
     release_api="https://api.github.com/repos/$DAEDE_REPO/releases/tags/$DAEDE_RELEASE_TAG"
   fi
 
-  python3 - "$release_api" "$DAEDE_ARCH" <<'PY'
+  python3 - "$release_api" "$DAEDE_ARCH" $DAEDE_PACKAGES <<'PY'
 import json
 import os
 import sys
 import urllib.request
 
 release_api, arch = sys.argv[1:3]
+packages = sys.argv[3:]
 request = urllib.request.Request(
     release_api,
     headers={
@@ -57,38 +54,56 @@ with urllib.request.urlopen(request, timeout=30) as response:
     release = json.load(response)
 
 suffix = f"-{arch}.apk"
-matches = [
-    asset.get("browser_download_url") or asset.get("url")
-    for asset in release.get("assets", [])
-    if asset.get("name", "").startswith("luci-app-daede-")
-    and asset.get("name", "").endswith(suffix)
-]
+assets = release.get("assets", [])
+tag = release.get("tag_name", release_api)
 
-if not matches:
-    tag = release.get("tag_name", release_api)
-    raise SystemExit(f"luci-app-daede APK for {arch} not found in {tag}")
+# Match each package by its own "<name>-" prefix so "dae-" never grabs "daed-".
+urls = []
+for pkg in packages:
+    matches = [
+        asset.get("browser_download_url") or asset.get("url")
+        for asset in assets
+        if asset.get("name", "").startswith(f"{pkg}-")
+        and asset.get("name", "").endswith(suffix)
+    ]
+    if not matches:
+        raise SystemExit(f"{pkg} APK for {arch} not found in {tag}")
+    urls.append(matches[0])
 
-print(matches[0])
+print("\n".join(urls))
 PY
 }
 
-install_daede_apk() {
+install_daede_packages() {
   case "$INSTALL_DAEDE" in
     1|true|yes) ;;
     *)
-      echo "Skipping luci-app-daede release APK download."
+      echo "Skipping daede release APK download."
       return
       ;;
   esac
 
   local packages_dir="$WORK_DIR/imagebuilder/packages"
-  local daede_url
-  daede_url="$(resolve_daede_apk_url)"
   mkdir -p "$packages_dir"
 
-  echo "Downloading luci-app-daede APK: $daede_url"
-  curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
-    -o "$packages_dir/${daede_url##*/}" "$daede_url"
+  # Legacy escape hatch: a single explicit APK URL. In this mode only that
+  # file is fetched, so dae/daed are still resolved from the ImmortalWrt feed.
+  if [ -n "$DAEDE_APK_URL" ]; then
+    echo "DAEDE_APK_URL override set; downloading only this APK."
+    echo "Note: dae/daed come from the ImmortalWrt feed in this mode."
+    curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
+      -o "$packages_dir/${DAEDE_APK_URL##*/}" "$DAEDE_APK_URL"
+    return
+  fi
+
+  local urls
+  urls="$(resolve_daede_asset_urls)"
+  while IFS= read -r url; do
+    [ -n "$url" ] || continue
+    echo "Downloading daede APK: $url"
+    curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
+      -o "$packages_dir/${url##*/}" "$url"
+  done <<< "$urls"
 }
 
 if [ ! -s "$IB_ARCHIVE" ]; then
@@ -101,7 +116,7 @@ mkdir -p "$WORK_DIR/imagebuilder"
 tar --use-compress-program=unzstd -xf "$IB_ARCHIVE" -C "$WORK_DIR/imagebuilder" --strip-components=1
 
 cp -a files "$WORK_DIR/imagebuilder/files"
-install_daede_apk
+install_daede_packages
 
 cd "$WORK_DIR/imagebuilder"
 
@@ -112,6 +127,7 @@ echo "Rootfs part size: ${ROOTFS_PARTSIZE}MB"
 echo "Extra packages: $EXTRA_PACKAGES"
 echo "Install daede APK: $INSTALL_DAEDE"
 echo "Daede release: $DAEDE_REPO@$DAEDE_RELEASE_TAG ($DAEDE_ARCH)"
+echo "Daede packages from release: $DAEDE_PACKAGES"
 mkdir -p "$OUT_DIR"
 echo "extra_packages=$EXTRA_PACKAGES" > "$OUT_DIR/.extra_packages"
 
@@ -123,11 +139,15 @@ ImageBuilder failed.
 Common causes for this daede image:
 - The selected ImmortalWrt snapshot ImageBuilder and package feeds are out of sync.
   Example: base packages require a newer libubox/libblobmsg-json than the public feed provides.
-- luci-app-daede or one of the dae/daed eBPF dependencies
+- One of the dae/daed eBPF kmod dependencies
   (kmod-sched-bpf / kmod-veth / kmod-xdp-sockets-diag)
   is missing from the selected target's kmod feed for the current kernel version.
-- The luci-app-daede release APK was not copied into the local ImageBuilder packages
-  directory, or its architecture does not match the selected target.
+  These kmods still come from the ImmortalWrt feed.
+- A dae/daed/luci-app-daede release APK was not copied into the local ImageBuilder
+  packages directory, or its architecture does not match the selected target.
+- dae/daed/luci-app-daede now come from the openwrt-daede release (date-based
+  versions like 2026.x), which outrank the feed's 1.x builds so apk prefers them.
+  If the feed ever ships a higher version, pin the local one explicitly in PACKAGES.
 
 About BTF (no longer a blocker on 25.12):
 - ImmortalWrt 25.12 kernels enable CONFIG_DEBUG_INFO_BTF by default. dae/daed reads BTF

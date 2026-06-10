@@ -5,7 +5,7 @@
 ## 中文
 
 构建一个 ImmortalWrt x86/64 测试固件，默认包含
-[`luci-app-daede`](https://github.com/kenzok8/luci-app-daede) 以及运行
+[`luci-app-daede`](https://github.com/kenzok8/openwrt-daede) 以及运行
 `dae` / `daed` 所需的基础依赖。
 
 ### 默认固件
@@ -16,15 +16,15 @@
 - Rootfs 分区：`1024` MB
 - ImageBuilder URL：
   `https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/x86/64/immortalwrt-imagebuilder-25.12-SNAPSHOT-x86-64.Linux-x86_64.tar.zst`
-- luci-app-daede：
-  [`luci-app-daede`](https://github.com/kenzok8/luci-app-daede)
+- daede 包来源（dae / daed / luci-app-daede）：
+  [`kenzok8/openwrt-daede`](https://github.com/kenzok8/openwrt-daede)
 
 ### 默认安装包
 
 工作流默认从
-[`kenzok8/luci-app-daede`](https://github.com/kenzok8/luci-app-daede) 的
-GitHub Release 下载匹配架构的 `luci-app-daede-*-x86_64.apk`，放入
-ImageBuilder 本地包源，然后安装以下软件包：
+[`kenzok8/openwrt-daede`](https://github.com/kenzok8/openwrt-daede) 的
+GitHub Release 下载匹配架构的 `dae-*`、`daed-*`、`luci-app-daede-*` 三个
+APK，放入 ImageBuilder 本地包源，然后安装以下软件包：
 
 ```text
 luci
@@ -39,9 +39,12 @@ curl
 nano
 ```
 
-ImageBuilder 不会从源码编译 LuCI 应用；这里是把已经编译好的
-`luci-app-daede` APK 打进固件。`dae` / `daed` 和内核依赖仍来自所选
-ImmortalWrt feed。如果对应 feed 缺少某个依赖，构建会失败。
+ImageBuilder 不会从源码编译 LuCI 应用；这里是把已经编译好的 `dae` /
+`daed` / `luci-app-daede` APK 打进固件，三者都来自 `openwrt-daede`，与
+ImmortalWrt feed 的源码版本不同。这些 APK 用日期版本（如 `2026.x`），
+数值上高于 feed 的 `1.x`，所以 apk 解析依赖时会优先选用本地的、盖过
+feed。只有内核 `kmod-*` 依赖仍来自所选 ImmortalWrt feed；如果对应 feed
+缺少某个 kmod，构建会失败。
 
 工作流会在正式构建前运行 `make manifest`，用于更早发现常见 feed 问题：
 
@@ -86,24 +89,27 @@ workflow 会把生成的固件作为 artifact 上传。当 `publish_release` 设
   `25.12-SNAPSHOT` x86/64
 - `preflight`：构建前是否先检查软件包清单，默认 `true`
 - `rootfs_partsize`：rootfs 分区大小，默认 `1024` MB
-- `install_daede`：是否把 `luci-app-daede` 打进固件，默认 `true`
-- `daede_release_tag`：使用哪个 `luci-app-daede` release，默认 `latest`
-- `daede_apk_url`：直接指定 APK 下载地址；填写后优先使用这个地址
+- `install_daede`：是否把 `dae` / `daed` / `luci-app-daede` 打进固件，默认 `true`
+- `daede_release_tag`：使用哪个 `openwrt-daede` release，默认 `latest`
+- `daede_apk_url`：直接指定单个 APK 下载地址；填写后只下这一个文件，此时
+  `dae` / `daed` 改由 ImmortalWrt feed 解析（兼容旧用法的逃生口）
 
 默认情况下不需要修改这些输入项，直接运行 workflow 即可生成内置
 `luci-app-daede` 的 x86/64 固件。
 
 也可通过环境变量覆盖 daede APK 来源：
 
+- `DAEDE_REPO`：默认 `kenzok8/openwrt-daede`
 - `DAEDE_RELEASE_TAG`：默认 `latest`
 - `DAEDE_ARCH`：默认 `x86_64`
-- `DAEDE_APK_URL`：指定后直接下载该 APK
+- `DAEDE_PACKAGES`：从 release 拉哪些包，默认 `dae daed luci-app-daede`
+- `DAEDE_APK_URL`：指定后只下载该单个 APK（dae/daed 改走 feed）
 - `INSTALL_DAEDE`：设为 `0` 可跳过内置 daede
 
 ## English
 
 Build an ImmortalWrt x86/64 KVM test image with
-[`luci-app-daede`](https://github.com/kenzok8/luci-app-daede) installed by
+[`luci-app-daede`](https://github.com/kenzok8/openwrt-daede) installed by
 default, plus the runtime dependencies needed by `dae` / `daed`.
 
 ### Default Image
@@ -114,14 +120,15 @@ default, plus the runtime dependencies needed by `dae` / `daed`.
 - Rootfs partition: `1024` MB
 - ImageBuilder URL:
   `https://downloads.immortalwrt.org/releases/25.12-SNAPSHOT/targets/x86/64/immortalwrt-imagebuilder-25.12-SNAPSHOT-x86-64.Linux-x86_64.tar.zst`
-- Shortcut:
-  [`kenzok8/luci-app-daede`](https://github.com/kenzok8/luci-app-daede)
+- daede package source (dae / daed / luci-app-daede):
+  [`kenzok8/openwrt-daede`](https://github.com/kenzok8/openwrt-daede)
 
 ### Default Packages
 
-The workflow downloads the matching `luci-app-daede-*-x86_64.apk` from the
-[`kenzok8/luci-app-daede`](https://github.com/kenzok8/luci-app-daede) GitHub
-Release, places it in ImageBuilder's local package directory, and installs these
+The workflow downloads the matching `dae-*`, `daed-*` and `luci-app-daede-*`
+APKs from the
+[`kenzok8/openwrt-daede`](https://github.com/kenzok8/openwrt-daede) GitHub
+Release, places them in ImageBuilder's local package directory, and installs these
 packages:
 
 ```text
@@ -138,9 +145,12 @@ nano
 ```
 
 ImageBuilder does not compile the LuCI app from source. This repository bakes the
-prebuilt `luci-app-daede` APK into the image. `dae` / `daed` and kernel
-dependencies still come from the selected ImmortalWrt feed. If a dependency is
-missing from that feed, the build will fail.
+prebuilt `dae` / `daed` / `luci-app-daede` APKs into the image, all sourced from
+`openwrt-daede` (whose source differs from the ImmortalWrt feed builds). These
+APKs use date-based versions (e.g. `2026.x`) that outrank the feed's `1.x`, so
+apk prefers the local copies over the feed during dependency resolution. Only the
+kernel `kmod-*` dependencies still come from the selected ImmortalWrt feed. If a
+required kmod is missing from that feed, the build will fail.
 
 The workflow runs `make manifest` before building the image. This catches common
 feed problems earlier, especially:
@@ -190,16 +200,20 @@ Common inputs:
 - `preflight`: run the package manifest check before building, defaults to
   `true`
 - `rootfs_partsize`: rootfs partition size, defaults to `1024` MB
-- `install_daede`: bake `luci-app-daede` into the image, defaults to `true`
-- `daede_release_tag`: `luci-app-daede` release tag to use, defaults to `latest`
-- `daede_apk_url`: direct APK download URL; when set, it takes priority
+- `install_daede`: bake `dae` / `daed` / `luci-app-daede` into the image, defaults to `true`
+- `daede_release_tag`: `openwrt-daede` release tag to use, defaults to `latest`
+- `daede_apk_url`: direct single-APK download URL; when set, only that file is
+  fetched and `dae` / `daed` fall back to the ImmortalWrt feed
 
 For the normal x86/64 build, leave the inputs unchanged and run the workflow.
 The generated image will include `luci-app-daede`.
 
 You can override the daede APK source with environment variables:
 
+- `DAEDE_REPO`: defaults to `kenzok8/openwrt-daede`
 - `DAEDE_RELEASE_TAG`: defaults to `latest`
 - `DAEDE_ARCH`: defaults to `x86_64`
-- `DAEDE_APK_URL`: direct APK URL override
+- `DAEDE_PACKAGES`: which packages to pull from the release, defaults to
+  `dae daed luci-app-daede`
+- `DAEDE_APK_URL`: single-APK URL override (dae/daed then come from the feed)
 - `INSTALL_DAEDE`: set to `0` to skip baking daede into the image
