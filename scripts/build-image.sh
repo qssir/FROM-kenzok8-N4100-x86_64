@@ -88,13 +88,13 @@ install_daede_apk() {
 
   # strip arch suffix from filename so the internal noarch metadata matches.
   # 25.12 ImageBuilder expects APKs under packages/<arch>/ with APKINDEX.tar.gz.
-  local apk_name="luci-app-daede-1.0-r0.apk"
   apk_name="${daede_url##*/}"
   apk_name="${apk_name%-${DAEDE_ARCH:-x86_64}.apk}.apk"
 
   echo "Downloading luci-app-daede APK: $daede_url"
   curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
     -o "$packages_dir/$apk_name" "$daede_url"
+}
 
 if [ ! -s "$IB_ARCHIVE" ]; then
   curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
