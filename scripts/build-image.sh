@@ -15,7 +15,7 @@ DAEDE_RELEASE_TAG="${DAEDE_RELEASE_TAG:-latest}"
 DAEDE_ARCH="${DAEDE_ARCH:-x86_64}"
 DAEDE_APK_URL="${DAEDE_APK_URL:-}"
 
-EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci luci-i18n-base-zh-cn luci-i18n-package-manager-zh-cn luci-app-daede kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano}"
+EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci luci-i18n-base-zh-cn luci-i18n-package-manager-zh-cn kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano}"
 
 WORK_DIR="${WORK_DIR:-$PWD/work}"
 IB_ARCHIVE="$WORK_DIR/imagebuilder.tar.zst"
@@ -81,17 +81,25 @@ install_daede_apk() {
       ;;
   esac
 
-  local packages_dir="$WORK_DIR/imagebuilder/packages"
+  local root_dir="$WORK_DIR/imagebuilder/files/root"
   local daede_url
   daede_url="$(resolve_daede_apk_url)"
-  mkdir -p "$packages_dir"
+  mkdir -p "$root_dir"
 
   echo "Downloading luci-app-daede APK: $daede_url"
-  # rename to standard apk format (name_version_arch.apk) so ImageBuilder
-  # parses the noarch arch correctly — the release asset uses dashes and a
-  # target-specific suffix but the package inside is all/noarch.
   curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
-    -o "$packages_dir/luci-app-daede.apk" "$daede_url"
+    -o "$root_dir/luci-app-daede.apk" "$daede_url"
+
+  # auto-install on first boot (uci-defaults) so the APK bypasses ImageBuilder's
+  # package resolution entirely — just a prebuilt asset baked into the image.
+  local boot_dir="$WORK_DIR/imagebuilder/files/etc/uci-defaults"
+  mkdir -p "$boot_dir"
+  cat > "$boot_dir/99-install-luci-daede" <<'BOOT'
+#!/bin/sh
+apk add --allow-untrusted /root/luci-app-daede.apk && rm -f /root/luci-app-daede.apk
+exit 0
+BOOT
+  chmod +x "$boot_dir/99-install-luci-daede"
 }
 
 if [ ! -s "$IB_ARCHIVE" ]; then
@@ -107,15 +115,6 @@ cp -a files "$WORK_DIR/imagebuilder/files"
 install_daede_apk
 
 cd "$WORK_DIR/imagebuilder"
-
-# daede feed so apk can resolve luci-app-daede during manifest / image build.
-# Map the ImageBuilder target (x86/64) to the feed's arch dir name (x86_64).
-_daede_target_arch="${DAEDE_ARCH:-x86_64}"
-_daede_sdk="$(echo "$IMAGEBUILDER_URL" | grep -oE '[0-9]+\.[0-9]+(-SNAPSHOT)?' | head -1)"
-[ -n "$_daede_sdk" ] || _daede_sdk="25.12"
-_feed_url="https://down.dllkids.xyz/openwrt-feed/${_daede_sdk}/${_daede_target_arch}"
-echo "Adding daede feed: $_feed_url"
-grep -qxF "$_feed_url" repositories 2>/dev/null || printf '%s\n' "$_feed_url" >> repositories
 
 echo "Version: $VERSION"
 echo "Target: $TARGET"
