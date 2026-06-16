@@ -81,21 +81,20 @@ install_daede_apk() {
       ;;
   esac
 
-  local packages_dir="$WORK_DIR/imagebuilder/packages"
+  local packages_dir="$WORK_DIR/imagebuilder/packages/${DAEDE_ARCH:-x86_64}"
   local daede_url
   daede_url="$(resolve_daede_apk_url)"
   mkdir -p "$packages_dir"
 
+  # strip arch suffix from filename so the internal noarch metadata matches.
+  # 25.12 ImageBuilder expects APKs under packages/<arch>/ with APKINDEX.tar.gz.
+  local apk_name="luci-app-daede-1.0-r0.apk"
+  apk_name="${daede_url##*/}"
+  apk_name="${apk_name%-${DAEDE_ARCH:-x86_64}.apk}.apk"
+
   echo "Downloading luci-app-daede APK: $daede_url"
   curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
-    -o "$packages_dir/${daede_url##*/}" "$daede_url"
-
-  # register local packages dir as an apk repo so make manifest picks it up.
-  # (25.12 ImageBuilder switched from opkg to apk — without this the local
-  #  .apk is invisible to the world solver.)
-  grep -qxF "$packages_dir" "$WORK_DIR/imagebuilder/repositories" 2>/dev/null || \
-    printf '%s\n' "$packages_dir" >> "$WORK_DIR/imagebuilder/repositories"
-}
+    -o "$packages_dir/$apk_name" "$daede_url"
 
 if [ ! -s "$IB_ARCHIVE" ]; then
   curl -L --retry 8 --retry-delay 5 --connect-timeout 30 \
