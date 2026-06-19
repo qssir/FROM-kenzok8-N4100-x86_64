@@ -162,18 +162,22 @@ if [ "$PREFLIGHT" = "1" ] || [ "$PREFLIGHT" = "true" ]; then
   fi
 fi
 
+# Slim image formats: keep only squashfs img.gz + qcow2 + vmdk (drop ext4, targz, vdi, vhdx, ISO)
+sed -i \
+  -e 's/^CONFIG_TARGET_ROOTFS_EXT4FS=y/# CONFIG_TARGET_ROOTFS_EXT4FS is not set/' \
+  -e 's/^CONFIG_TARGET_ROOTFS_TARGZ=y/# CONFIG_TARGET_ROOTFS_TARGZ is not set/' \
+  -e 's/^CONFIG_VDI_IMAGES=y/# CONFIG_VDI_IMAGES is not set/' \
+  -e 's/^CONFIG_VHDX_IMAGES=y/# CONFIG_VHDX_IMAGES is not set/' \
+  -e 's/^CONFIG_ISO_IMAGES=y/# CONFIG_ISO_IMAGES is not set/' \
+  .config
+
 if ! make image \
     PROFILE="$PROFILE" \
     PACKAGES="$EXTRA_PACKAGES" \
     FILES=files \
     BIN_DIR="$OUT_DIR" \
     EXTRA_IMAGE_NAME="$EXTRA_IMAGE_NAME" \
-    ROOTFS_PARTSIZE="$ROOTFS_PARTSIZE" \
-    CONFIG_TARGET_ROOTFS_EXT4FS=n \
-    CONFIG_TARGET_ROOTFS_TARGZ=n \
-    CONFIG_VDI_IMAGES=n \
-    CONFIG_VHDX_IMAGES=n \
-    CONFIG_ISO_IMAGES=n; then
+    ROOTFS_PARTSIZE="$ROOTFS_PARTSIZE"; then
   diagnose_failure
   exit 1
 fi
