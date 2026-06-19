@@ -211,6 +211,8 @@ fi
 | **qcow2** | QEMU / Proxmox VE | daede-squashfs-efi.qcow2 |
 | **vmdk** | VMware ESXi / Workstation | daede-squashfs-efi.vmdk |
 
+> 额外：`daede-rootfs.tar.gz` 裸文件系统，可用于 LXC 容器转换。
+
 ### 镜像详情
 
 - **系统类型**：squashfs（只读根 + overlay 可写层，抗断电）
