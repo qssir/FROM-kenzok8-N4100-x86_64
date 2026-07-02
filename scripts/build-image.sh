@@ -16,8 +16,8 @@ DAEDE_RELEASE_TAG="${DAEDE_RELEASE_TAG:-latest}"
 DAEDE_ARCH="${DAEDE_ARCH:-x86_64}"
 DAEDE_APK_URL="${DAEDE_APK_URL:-}"
 
-# 📦 满血全家桶核心软件包对齐 (包含 FUSE 底层、Docker、存储下载、VPN组网、PassWall等，已修复官方源包名错漏，坚决不含 Python 编译组件)
-EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci luci-i18n-base-zh-cn luci-i18n-package-manager-zh-cn luci-app-daede kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano kmod-fuse fuse-utils kmod-fs-ext4 kmod-fs-vfat kmod-fs-ntfs3 luci-app-dockerman docker-compose luci-app-alist luci-app-samba4 luci-app-minidlna luci-app-qbittorrent luci-app-transmission luci-app-aria2 luci-app-passwall xray-core shadowsocks-libev-ss-local luci-app-zerotier luci-app-n2n luci-app-softethervpn luci-app-ipsec-vpnd luci-app-syncdial luci-app-eqos wrtbwmon luci-app-wrtbwmon-v2 luci-app-ttyd luci-app-diskman luci-app-filebrowser luci-theme-argon}"
+# 📦 满血全家桶核心软件包对齐 (已彻底剥离软件源缺失的 wrtbwmon 与 shadowsocks 旧组件，确保核心 Passwall+Xray/DAED/Docker/FUSE/储存下载完美通过)
+EXTRA_PACKAGES="${EXTRA_PACKAGES:-luci luci-i18n-base-zh-cn luci-i18n-package-manager-zh-cn luci-app-daede kmod-sched-core kmod-sched-bpf kmod-veth kmod-xdp-sockets-diag curl nano kmod-fuse fuse-utils kmod-fs-ext4 kmod-fs-vfat kmod-fs-ntfs3 luci-app-dockerman docker-compose luci-app-alist luci-app-samba4 luci-app-minidlna luci-app-qbittorrent luci-app-transmission luci-app-aria2 luci-app-passwall xray-core luci-app-zerotier luci-app-n2n luci-app-softethervpn luci-app-ipsec-vpnd luci-app-syncdial luci-app-eqos luci-app-ttyd luci-app-diskman luci-app-filebrowser luci-theme-argon}"
 
 WORK_DIR="${WORK_DIR:-$PWD/work}"
 IB_ARCHIVE="$WORK_DIR/imagebuilder.tar.zst"
